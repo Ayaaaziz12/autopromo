@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module>
+  <name>autopromo</name>
+  <displayName>AutoPromo - Promotions Automatiques</displayName>
+  <version>1.0.0</version>
+  <author>Aya Aziz</author>
+  <tab>pricing_promotion</tab>
+  <description>Crée automatiquement des promotions et coupons personnalisés selon des règles configurables.</description>
+  <confirmUninstall>Êtes-vous sûr de vouloir désinstaller AutoPromo ?</confirmUninstall>
+  <is_configurable>1</is_configurable>
+</module>
