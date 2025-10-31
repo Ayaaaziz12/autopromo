@@ -1,11 +1,12 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <module>
-  <name>autopromo</name>
-  <displayName>AutoPromo - Promotions Automatiques</displayName>
-  <version>1.0.0</version>
-  <author>Aya Aziz</author>
-  <tab>pricing_promotion</tab>
-  <description>Crée automatiquement des promotions et coupons personnalisés selon des règles configurables.</description>
-  <confirmUninstall>Êtes-vous sûr de vouloir désinstaller AutoPromo ?</confirmUninstall>
-  <is_configurable>1</is_configurable>
+    <name>autopromo</name>
+    <displayName><![CDATA[AutoPromo - Promotions Intelligentes]]></displayName>
+    <version><![CDATA[1.0.0]]></version>
+    <description><![CDATA[Analyse le comportement clients et stocks pour générer des promotions automatiques]]></description>
+    <author><![CDATA[TonNom]]></author>
+    <tab><![CDATA[advertising_marketing]]></tab>
+    <is_configurable>1</is_configurable>
+    <need_instance>0</need_instance>
+    <confirmUninstall><![CDATA[Êtes-vous sûr de vouloir désinstaller ce module ?]]></confirmUninstall>
 </module>
