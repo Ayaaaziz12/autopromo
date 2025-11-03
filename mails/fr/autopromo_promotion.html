@@ -1,0 +1,46 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+    <title>Une promotion spéciale pour vous!</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .header { background: #000000; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .promo-code { background: #f8f8f8; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .footer { background: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; }
+        .button { background: #000000; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Une promotion vous attend!</h1>
+    </div>
+    
+    <div class="content">
+        <p>Bonjour <strong>{firstname} {lastname}</strong>,</p>
+        
+        <p>En tant que client fidèle, nous avons le plaisir de vous offrir une promotion spéciale :</p>
+        
+        <div class="promo-code">
+            <h2>{rule_name}</h2>
+            {if isset($product_name)}
+            <p>Promotion spéciale sur : <strong>{product_name}</strong></p>
+            {/if}
+            {if $message}
+            <p>{$message}</p>
+            {/if}
+        </div>
+        
+        <p>Ne manquez pas cette opportunité !</p>
+        
+        <p style="text-align: center;">
+            <a href="{shop_url}" class="button">Visiter notre boutique</a>
+        </p>
+    </div>
+    
+    <div class="footer">
+        <p>Cet email vous a été envoyé par {shop_name}</p>
+        <p>Si vous ne souhaitez plus recevoir nos promotions, veuillez nous contacter.</p>
+    </div>
+</body>
+</html>

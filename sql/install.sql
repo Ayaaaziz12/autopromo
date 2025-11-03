@@ -26,5 +26,8 @@ CREATE TABLE IF NOT EXISTS `PREFIX_autopromo_generated_coupons` (
     `id_cart_rule` int(11) NOT NULL,
     `id_customer` int(11) NULL,
     `date_add` datetime NOT NULL,
-    PRIMARY KEY (`id_generated`)
+    PRIMARY KEY (`id_generated`),
+    KEY `id_rule` (`id_rule`),
+    KEY `id_cart_rule` (`id_cart_rule`),
+    KEY `id_customer` (`id_customer`)
 ) ENGINE=ENGINE_TYPE DEFAULT CHARSET=utf8;

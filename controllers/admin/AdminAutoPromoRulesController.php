@@ -384,7 +384,8 @@ class AdminAutoPromoRulesController extends ModuleAdminController
                     'success' => true,
                     'conditions_met' => $conditions_met,
                     'actions_executed' => $actions_result,
-                    'test_customer' => $test_customer
+                    'test_customer' => $test_customer,
+                    'rule_name' => $rule->name
                 )));
             }
         }

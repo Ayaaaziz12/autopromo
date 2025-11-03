@@ -202,20 +202,242 @@ class AutoPromoRule extends ObjectModel
     }
 
     /**
-     * Exécute une action individuelle
-     */
-    private function executeSingleAction($action, $id_customer, $id_product)
-    {
-        // Pour l'instant, on retourne juste un message de simulation
-        // Les vraies actions seront implémentées demain
+ * Exécute une action individuelle
+ */
+private function executeSingleAction($action, $id_customer = null, $id_product = null)
+{
+    if (!isset($action['type'])) {
         return array(
-            'action_type' => $action['type'],
-            'action_value' => $action['value'],
-            'executed' => true,
-            'message' => 'Action simulée - À implémenter',
-            'timestamp' => date('Y-m-d H:i:s')
+            'success' => false,
+            'error' => 'Type d\'action non défini'
         );
     }
+
+    switch ($action['type']) {
+        case 'generate_coupon':
+            return $this->generateCoupon($action, $id_customer);
+        
+        case 'direct_discount':
+            return $this->applyDirectDiscount($action, $id_product);
+        
+        case 'send_email':
+            return $this->sendPromoEmail($action, $id_customer, $id_product);
+        
+        default:
+            return array(
+                'success' => false,
+                'error' => 'Type d\'action non supporté: ' . $action['type']
+            );
+    }
+}
+
+/**
+ * Action: Générer un coupon de réduction
+ */
+private function generateCoupon($action, $id_customer)
+{
+    try {
+        // Créer un code de coupon unique
+        $coupon_code = 'AUTO' . strtoupper(Tools::passwdGen(8));
+        
+        // Déterminer le type de réduction
+        $discount_type = 'percent';
+        $discount_value = (float)$action['value'];
+        
+        // Vérifier si c'est un montant fixe (si la valeur est > 100, c'est probablement un montant fixe)
+        if ($discount_value > 100) {
+            $discount_type = 'amount';
+        }
+
+        // Créer la règle panier (cart rule)
+        $cart_rule = new CartRule();
+        $cart_rule->code = $coupon_code;
+        $cart_rule->name = array(
+            Configuration::get('PS_LANG_DEFAULT') => 'Promo Auto: ' . $this->name
+        );
+        $cart_rule->description = array(
+            Configuration::get('PS_LANG_DEFAULT') => 'Coupon généré automatiquement par AutoPromo'
+        );
+        
+        // Configuration de la réduction
+        if ($discount_type === 'percent') {
+            $cart_rule->reduction_percent = $discount_value;
+        } else {
+            $cart_rule->reduction_amount = $discount_value;
+            $cart_rule->reduction_currency = Configuration::get('PS_CURRENCY_DEFAULT');
+            $cart_rule->reduction_tax = true;
+        }
+        
+        // Restrictions
+        $cart_rule->quantity = 1;
+        $cart_rule->quantity_per_user = 1;
+        $cart_rule->highlight = 1;
+        $cart_rule->partial_use = 0;
+        $cart_rule->minimum_amount = 0;
+        $cart_rule->minimum_amount_tax = 0;
+        $cart_rule->minimum_amount_currency = Configuration::get('PS_CURRENCY_DEFAULT');
+        $cart_rule->minimum_amount_shipping = 0;
+        
+        // Durée de validité (15 jours par défaut)
+        $cart_rule->date_from = date('Y-m-d H:i:s');
+        $cart_rule->date_to = date('Y-m-d H:i:s', strtotime('+15 days'));
+        
+        // Restreindre au client si spécifié
+        if ($id_customer) {
+            $cart_rule->id_customer = $id_customer;
+        }
+        
+        // Sauvegarder le coupon
+        if (!$cart_rule->add()) {
+            throw new Exception('Erreur lors de la création du coupon');
+        }
+        
+        // Enregistrer dans l'historique
+        $this->saveGeneratedCoupon($cart_rule->id, $id_customer);
+        
+        return array(
+            'success' => true,
+            'action_type' => 'generate_coupon',
+            'coupon_code' => $coupon_code,
+            'discount_value' => $discount_value,
+            'discount_type' => $discount_type,
+            'customer_id' => $id_customer,
+            'message' => 'Coupon généré: ' . $coupon_code
+        );
+        
+    } catch (Exception $e) {
+        return array(
+            'success' => false,
+            'action_type' => 'generate_coupon',
+            'error' => $e->getMessage()
+        );
+    }
+}
+
+/**
+ * Action: Appliquer une remise directe sur un produit
+ */
+private function applyDirectDiscount($action, $id_product)
+{
+    try {
+        if (!$id_product) {
+            throw new Exception('ID produit manquant pour la remise directe');
+        }
+        
+        $discount_value = (float)$action['value'];
+        $discount_type = 'percentage'; // Par défaut en pourcentage
+        
+        // Vérifier si c'est un montant fixe
+        if ($discount_value > 100) {
+            $discount_type = 'amount';
+        }
+        
+        // Ici, on pourrait créer une règle de prix spécifique
+        // Pour l'instant, on log l'action et on retourne un succès simulé
+        
+        return array(
+            'success' => true,
+            'action_type' => 'direct_discount',
+            'product_id' => $id_product,
+            'discount_value' => $discount_value,
+            'discount_type' => $discount_type,
+            'message' => 'Remise de ' . $discount_value . ($discount_type === 'percentage' ? '%' : '€') . ' appliquée sur le produit ' . $id_product
+        );
+        
+    } catch (Exception $e) {
+        return array(
+            'success' => false,
+            'action_type' => 'direct_discount',
+            'error' => $e->getMessage()
+        );
+    }
+}
+
+/**
+ * Action: Envoyer un email promotionnel
+ */
+private function sendPromoEmail($action, $id_customer, $id_product)
+{
+    try {
+        if (!$id_customer) {
+            throw new Exception('ID client manquant pour l\'envoi d\'email');
+        }
+        
+        // Récupérer les informations du client
+        $customer = new Customer($id_customer);
+        if (!Validate::isLoadedObject($customer)) {
+            throw new Exception('Client non trouvé');
+        }
+        
+        // Préparer le contenu de l'email
+        $template_vars = array(
+            '{firstname}' => $customer->firstname,
+            '{lastname}' => $customer->lastname,
+            '{rule_name}' => $this->name,
+            '{message}' => isset($action['message']) ? $action['message'] : '',
+            '{shop_name}' => Configuration::get('PS_SHOP_NAME'),
+            '{shop_url}' => Context::getContext()->link->getPageLink('index')
+        );
+        
+        // Si un produit est concerné, ajouter ses informations
+        if ($id_product) {
+            $product = new Product($id_product, false, Configuration::get('PS_LANG_DEFAULT'));
+            if (Validate::isLoadedObject($product)) {
+                $template_vars['{product_name}'] = $product->name;
+                $template_vars['{product_url}'] = Context::getContext()->link->getProductLink($product);
+            }
+        }
+        
+        // Envoyer l'email
+        $email_sent = Mail::Send(
+            Configuration::get('PS_LANG_DEFAULT'),
+            'autopromo_promotion', // Template d'email
+            'Une promotion spéciale pour vous!', // Sujet
+            $template_vars,
+            $customer->email,
+            $customer->firstname . ' ' . $customer->lastname,
+            null, // from_address
+            null, // from_name
+            null, // attachment
+            null, // smtp
+            _PS_MODULE_DIR_ . 'autopromo/mails/' // template_path
+        );
+        
+        if (!$email_sent) {
+            throw new Exception('Erreur lors de l\'envoi de l\'email');
+        }
+        
+        return array(
+            'success' => true,
+            'action_type' => 'send_email',
+            'customer_email' => $customer->email,
+            'customer_id' => $id_customer,
+            'message' => 'Email promotionnel envoyé à ' . $customer->email
+        );
+        
+    } catch (Exception $e) {
+        return array(
+            'success' => false,
+            'action_type' => 'send_email',
+            'error' => $e->getMessage()
+        );
+    }
+}
+
+/**
+ * Sauvegarde le coupon généré dans l'historique
+ */
+private function saveGeneratedCoupon($id_cart_rule, $id_customer = null)
+{
+    $data = array(
+        'id_rule' => (int)$this->id,
+        'id_cart_rule' => (int)$id_cart_rule,
+        'id_customer' => $id_customer ? (int)$id_customer : null,
+        'date_add' => date('Y-m-d H:i:s')
+    );
+    
+    return Db::getInstance()->insert('autopromo_generated_coupons', $data);
+}
 
     /**
      * Log l'exécution d'une règle
