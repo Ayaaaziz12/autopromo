@@ -122,3 +122,47 @@
         });
     });
 </script>
+<script>
+function testRule(id_rule) {
+    if (confirm('Tester cette règle ?')) {
+        $.ajax({
+            url: '{$link->getAdminLink('AdminAutoPromoRules')|escape:'javascript':'UTF-8'}',
+            data: {
+                ajax: true,
+                action: 'testRule',
+                id_rule: id_rule,
+                token: '{$token|escape:'javascript':'UTF-8'}'
+            },
+            success: function(response) {
+                var result = JSON.parse(response);
+                if (result.success) {
+                    if (result.conditions_met) {
+                        alert('✅ Conditions remplies ! Actions exécutées avec succès.');
+                    } else {
+                        alert('❌ Conditions non remplies pour le client test.');
+                    }
+                } else {
+                    alert('❌ Erreur: ' + result.error);
+                }
+            }
+        });
+    }
+}
+
+// Tester toutes les règles
+$('#test-rules').click(function() {
+    if (confirm('Tester toutes les règles actives ?')) {
+        $.ajax({
+            url: '{$link->getAdminLink('AdminAutoPromoRules')|escape:'javascript':'UTF-8'}',
+            data: {
+                ajax: true,
+                action: 'testAllRules',
+                token: '{$token|escape:'javascript':'UTF-8'}'
+            },
+            success: function(response) {
+                alert('✅ Toutes les règles ont été testées ! Consultez les logs pour les détails.');
+            }
+        });
+    }
+});
+</script>

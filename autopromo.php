@@ -22,8 +22,22 @@ class AutoPromo extends Module
 
         $this->displayName = $this->l('AutoPromo - Promotions Intelligentes');
         $this->description = $this->l('Analyse le comportement clients et stocks pour générer des promotions automatiques');
+        $this->loadModels();
     }
-
+    private function loadModels()
+{
+    $models_path = $this->getLocalPath() . 'models/';
+    
+    if (is_dir($models_path)) {
+        $models = scandir($models_path);
+        
+        foreach ($models as $model) {
+            if (pathinfo($model, PATHINFO_EXTENSION) === 'php') {
+                require_once $models_path . $model;
+            }
+        }
+    }
+}
     public function install()
     {
         return parent::install() &&
@@ -44,7 +58,7 @@ class AutoPromo extends Module
     $tab = new Tab();
     $tab->class_name = 'AdminAutoPromoRules';
     $tab->module = $this->name;
-    $tab->id_parent = (int)Tab::getIdFromClassName('IMPROVE'); // Ou 'SELL' selon ta version
+    $tab->id_parent = (int)Tab::getIdFromClassName('IMPROVE'); 
     $tab->position = 1;
     
     $languages = Language::getLanguages();
@@ -117,5 +131,136 @@ class AutoPromo extends Module
     Tools::redirectAdmin(
         $this->context->link->getAdminLink('AdminAutoPromoRules')
     );
+}
+/**
+ * Exécute toutes les règles actives
+ */
+public function runAllRules()
+{
+    $active_rules = AutoPromoRule::getActiveRules();
+    $results = array();
+
+    foreach ($active_rules as $rule) {
+        $rule_results = $this->processRule($rule);
+        if ($rule_results) {
+            $results[$rule->id] = array(
+                'rule_name' => $rule->name,
+                'results' => $rule_results
+            );
+        }
+    }
+
+    $this->logGlobalExecution($results);
+    return $results;
+}
+
+/**
+ * Traite une règle spécifique
+ */
+private function processRule($rule)
+{
+    $conditions = json_decode($rule->conditions, true);
+    if (!$conditions) {
+        return null;
+    }
+
+    // Déterminer le type de règle
+    $rule_type = $this->getRuleType($conditions);
+
+    switch ($rule_type) {
+        case 'customer':
+            return $this->processCustomerRule($rule);
+        case 'product':
+            return $this->processProductRule($rule);
+        default:
+            return null;
+    }
+}
+
+/**
+ * Détermine le type de règle
+ */
+private function getRuleType($conditions)
+{
+    foreach ($conditions as $condition) {
+        if (in_array($condition['type'], array('total_spent', 'order_count'))) {
+            return 'customer';
+        }
+        if (in_array($condition['type'], array('stock_days', 'low_sales'))) {
+            return 'product';
+        }
+    }
+    return 'unknown';
+}
+
+/**
+ * Traite une règle basée sur les clients
+ */
+private function processCustomerRule($rule)
+{
+    $results = array();
+    
+    // Récupérer tous les clients actifs
+    $customers = Db::getInstance()->executeS(
+        "SELECT id_customer FROM " . _DB_PREFIX_ . "customer WHERE active = 1"
+    );
+
+    foreach ($customers as $customer) {
+        if ($rule->checkConditions($customer['id_customer'])) {
+            $action_results = $rule->executeActions($customer['id_customer']);
+            $results[] = array(
+                'customer_id' => $customer['id_customer'],
+                'actions' => $action_results
+            );
+        }
+    }
+
+    return $results;
+}
+
+/**
+ * Traite une règle basée sur les produits
+ */
+private function processProductRule($rule)
+{
+    $results = array();
+    
+    // Récupérer tous les produits actifs
+    $products = Db::getInstance()->executeS(
+        "SELECT id_product FROM " . _DB_PREFIX_ . "product WHERE active = 1"
+    );
+
+    foreach ($products as $product) {
+        if ($rule->checkConditions(null, $product['id_product'])) {
+            $action_results = $rule->executeActions(null, $product['id_product']);
+            $results[] = array(
+                'product_id' => $product['id_product'],
+                'actions' => $action_results
+            );
+        }
+    }
+
+    return $results;
+}
+
+/**
+ * Log l'exécution globale
+ */
+private function logGlobalExecution($results)
+{
+    $log_data = array(
+        'id_rule' => 0,
+        'id_customer' => null,
+        'id_product' => null,
+        'action_type' => 'global_execution',
+        'details' => json_encode(array(
+            'timestamp' => date('Y-m-d H:i:s'),
+            'total_rules_executed' => count($results),
+            'results' => $results
+        )),
+        'date_add' => date('Y-m-d H:i:s')
+    );
+
+    return Db::getInstance()->insert('autopromo_logs', $log_data);
 }
 }

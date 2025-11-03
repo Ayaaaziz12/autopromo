@@ -153,11 +153,21 @@ class AdminAutoPromoRulesController extends ModuleAdminController
         // Ajouter des actions
         $this->addRowAction('edit');
         $this->addRowAction('delete');
+        $this->addRowAction('test');
 
         // Ajouter un indicateur de statut
         $this->list_no_link = true;
 
         return parent::renderList();
+    }
+
+    /**
+     * Action de test
+     */
+    public function displayTestLink($token, $id, $name = null)
+    {
+        return '<a class="btn btn-default" href="#" onclick="testRule('.$id.')">
+                <i class="icon-play"></i> Tester</a>';
     }
 
     public function renderForm()
@@ -349,5 +359,39 @@ class AdminAutoPromoRulesController extends ModuleAdminController
             'href' => self::$currentIndex . '&add' . $this->table . '&token=' . $this->token,
             'desc' => $this->l('Ajouter une règle')
         );
+    }
+
+    /**
+     * Action pour tester une règle
+     */
+    public function ajaxProcessTestRule()
+    {
+        $id_rule = (int)Tools::getValue('id_rule');
+        
+        if ($id_rule) {
+            $rule = new AutoPromoRule($id_rule);
+            
+            if (Validate::isLoadedObject($rule)) {
+                // Tester avec un client spécifique (premier client de la base)
+                $test_customer = Db::getInstance()->getValue(
+                    "SELECT id_customer FROM " . _DB_PREFIX_ . "customer ORDER BY id_customer LIMIT 1"
+                );
+                
+                $conditions_met = $rule->checkConditions($test_customer);
+                $actions_result = $conditions_met ? $rule->executeActions($test_customer) : array();
+                
+                die(json_encode(array(
+                    'success' => true,
+                    'conditions_met' => $conditions_met,
+                    'actions_executed' => $actions_result,
+                    'test_customer' => $test_customer
+                )));
+            }
+        }
+        
+        die(json_encode(array(
+            'success' => false,
+            'error' => 'Règle non trouvée'
+        )));
     }
 }
