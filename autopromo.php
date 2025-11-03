@@ -40,20 +40,20 @@ class AutoPromo extends Module
     }
 
     private function installTab()
-    {
-        $tab = new Tab();
-        $tab->class_name = 'AdminAutoPromoRules';
-        $tab->module = $this->name;
-        $tab->id_parent = (int)Tab::getIdFromClassName('SELL');
-        $tab->position = 1;
-        
-        $languages = Language::getLanguages();
-        foreach ($languages as $lang) {
-            $tab->name[$lang['id_lang']] = 'AutoPromo - Règles';
-        }
-        
-        return $tab->add();
+{
+    $tab = new Tab();
+    $tab->class_name = 'AdminAutoPromoRules';
+    $tab->module = $this->name;
+    $tab->id_parent = (int)Tab::getIdFromClassName('IMPROVE'); // Ou 'SELL' selon ta version
+    $tab->position = 1;
+    
+    $languages = Language::getLanguages();
+    foreach ($languages as $lang) {
+        $tab->name[$lang['id_lang']] = 'AutoPromo';
     }
+    
+    return $tab->add();
+}
 
     private function uninstallTab()
     {
@@ -112,9 +112,10 @@ class AutoPromo extends Module
     }
 
     public function getContent()
-    {
-        Tools::redirectAdmin(
-            $this->context->link->getAdminLink('AdminAutoPromoRules')
-        );
-    }
+{
+    // Redirection vers le controller des règles
+    Tools::redirectAdmin(
+        $this->context->link->getAdminLink('AdminAutoPromoRules')
+    );
+}
 }
