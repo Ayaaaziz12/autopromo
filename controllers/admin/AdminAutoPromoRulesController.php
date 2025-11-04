@@ -395,4 +395,90 @@ class AdminAutoPromoRulesController extends ModuleAdminController
             'error' => 'Règle non trouvée'
         )));
     }
+    /**
+ * Exécute toutes les règles (pour l'admin)
+ */
+public function ajaxProcessRunAllRules()
+{
+    try {
+        $module = Module::getInstanceByName('autopromo');
+        $results = $module->runAllRules();
+        
+        die(json_encode(array(
+            'success' => true,
+            'results' => $results
+        )));
+        
+    } catch (Exception $e) {
+        die(json_encode(array(
+            'success' => false,
+            'error' => $e->getMessage()
+        )));
+    }
+}
+
+/**
+ * Récupère les logs d'exécution
+ */
+public function ajaxProcessGetExecutionLogs()
+{
+    $logs = Db::getInstance()->executeS(
+        "SELECT * FROM " . _DB_PREFIX_ . "autopromo_logs 
+         WHERE action_type IN ('global_execution', 'cron_access', 'system_message')
+         ORDER BY date_add DESC 
+         LIMIT 10"
+    );
+    
+    if (empty($logs)) {
+        echo '<p class="text-muted text-center">Aucun log d\'exécution trouvé</p>';
+        return;
+    }
+    
+    echo '<div class="table-responsive">';
+    echo '<table class="table table-bordered">';
+    echo '<thead><tr><th>Date</th><th>Type</th><th>Détails</th></tr></thead>';
+    echo '<tbody>';
+    
+    foreach ($logs as $log) {
+        $details = $log['details'];
+        if (Tools::strlen($details) > 100) {
+            $details = Tools::substr($details, 0, 100) . '...';
+        }
+        
+        echo '<tr>';
+        echo '<td>' . $log['date_add'] . '</td>';
+        echo '<td><span class="label label-info">' . $log['action_type'] . '</span></td>';
+        echo '<td>' . htmlspecialchars($details) . '</td>';
+        echo '</tr>';
+    }
+    
+    echo '</tbody></table></div>';
+    exit;
+}
+
+/**
+ * Teste la connexion CRON
+ */
+public function ajaxProcessTestCron()
+{
+    $module = Module::getInstanceByName('autopromo');
+    $result = $module->testCronConnection();
+    
+    die(json_encode($result));
+}
+
+/**
+ * Récupère le statut CRON
+ */
+public function ajaxProcessGetCronStatus()
+{
+    $module = Module::getInstanceByName('autopromo');
+    $status = $module->checkCronStatus();
+    $cron_url = $module->getCronUrl();
+    
+    die(json_encode(array(
+        'status' => $status,
+        'cron_url' => $cron_url
+    )));
+}
 }
